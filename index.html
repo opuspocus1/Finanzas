@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financiero Argentina v2.0</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        .animate-spin { animation: spin 1s linear infinite; }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        
+        .chart-container { 
+            position: relative; 
+            height: 400px; 
+            width: 100%; 
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .tab-button {
+            transition: all 0.3s ease;
+        }
+        
+        .tab-button.active {
+            background: #2563eb;
+            color: white;
+            box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+        
+        .currency-button {
+            transition: all 0.2s ease;
+        }
+        
+        .currency-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .currency-button.selected {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+        
+        .bond-row:hover {
+            background: rgba(51, 65, 85, 0.3);
+        }
+        
+        .loading-container {
+            background: linear-gradient(135deg, #1e293b, #334155);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-container text-white">
+        <div class="text-center">
+            <div class="relative mb-6">
+                <div class="w-12 h-12 mx-auto border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h2 class="text-3xl font-bold mb-3 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Dashboard Financiero v2.0
+            </h2>
+            <p class="text-slate-400 mb-4">Cargando datos del mercado argentino...</p>
+            <div class="flex justify-center space-x-1">
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.2s;"></div>
+                <div class="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style="animation-delay: 0.4s;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-6" style="display: none;">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400 bg-clip-text text-transparent">
+                            Dashboard Financiero
+                        </h1>
+                        <p class="text-xl text-slate-300 mt-2">Mercado Argentino v2.0</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center text-slate-400 mb-2">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span>Última actualización: <span id="lastUpdate">--:--</span></span>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-block w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                            <span class="text-green-400 font-medium">En vivo</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="flex flex-wrap gap-3 mb-8" id="navigationTabs">
+                <button class="tab-button active flex items-center px-4 py-2 rounded-lg font-medium bg-slate-700/50 text-slate-300" onclick="showTab('overview')" data-tab="overview">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                    </svg>
+                    Resumen
+                </button>
+                <button class="tab-button flex items-center px-4 py-2 rounded-lg font-medium bg-slate-700/50 text-slate-300" onclick="showTab('currencies')" data-tab="currencies">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                        <path d="M2 12h20"></path>
+                    </svg>
+                    Divisas
+                </button>
+                <button class="tab-button flex items-center px-4 py-2 rounded-lg font-medium bg-slate-700/50 text-slate-300" onclick="showTab('bonds')" data-tab="bonds">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <line x1="12" x2="12" y1="20" y2="10"></line>
+                        <line x1="18" x2="18" y1="20" y2="4"></line>
+                        <line x1="6" x2="6" y1="20" y2="16"></line>
+                    </svg>
+                    Bonos
+                </button>
+                <button class="tab-button flex items-center px-4 py-2 rounded-lg font-medium bg-slate-700/50 text-slate-300" onclick="showTab('calculator')" data-tab="calculator">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                        <line x1="8" x2="16" y1="6" y2="6"></line>
+                        <line x1="8" x2="8" y1="10" y2="14"></line>
+                        <line x1="12" x2="12" y1="10" y2="14"></line>
+                        <line x1="16" x2="16" y1="10" y2="14"></line>
+                    </svg>
+                    Calculadora
+                </button>
+                <button class="tab-button flex items-center px-4 py-2 rounded-lg font-medium bg-slate-700/50 text-slate-300" onclick="showTab('analytics')" data-tab="analytics">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="6"></circle>
+                        <circle cx="12" cy="12" r="2"></circle>
+                    </svg>
+                    Analytics
+                </button>
+            </div>
+
+            <!-- Tab Content: Overview -->
+            <div id="tab-overview" class="tab-content">
+                <!-- Cotizaciones principales -->
+                <div id="currencyCards" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                    <!-- Las cards se generan dinámicamente -->
+                </div>
+
+                <!-- Overview cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="22,12 18,8 14,12 10,8 6,12 2,8"></polyline>
+                            </svg>
+                            Bonos Destacados
+                        </h2>
+                        <div id="bondsHighlight" class="space-y-3">
+                            <!-- Los bonos se generan dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-xl font-semibold mb-4 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"></polygon>
+                            </svg>
+                            Estadísticas del Mercado
+                        </h2>
+                        <div id="marketStats" class="grid grid-cols-2 gap-4">
+                            <!-- Las estadísticas se generan dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Currencies -->
+            <div id="tab-currencies" class="tab-content" style="display: none;">
+                <div class="space-y-6">
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <div class="flex flex-col space-y-4 mb-6">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-2xl font-semibold">Evolución de Monedas vs ARS</h2>
+                                <select id="historicalRange" class="bg-slate-700 text-white rounded-lg px-4 py-2 border border-slate-600 focus:border-blue-400 focus:outline-none">
+                                    <option value="7">7 días</option>
+                                    <option value="15">15 días</option>
+                                    <option value="30" selected>30 días</option>
+                                    <option value="60">2 meses</option>
+                                    <option value="90">3 meses</option>
+                                    <option value="180">6 meses</option>
+                                    <option value="365">1 año</option>
+                                    <option value="730">2 años</option>
+                                    <option value="1095">3 años</option>
+                                    <option value="1825">5 años</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="text-sm text-slate-400 block mb-3">Seleccionar monedas (máximo 5):</label>
+                                <div id="currencySelector" class="flex flex-wrap gap-2">
+                                    <!-- Los botones se generan dinámicamente -->
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">
+                                    <span id="selectedCount">3</span>/5 monedas seleccionadas
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-container">
+                            <canvas id="currencyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-xl font-semibold mb-4">Todas las Monedas Disponibles</h2>
+                        <div id="allCurrencies" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Las monedas se generan dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Bonds -->
+            <div id="tab-bonds" class="tab-content" style="display: none;">
+                <div class="space-y-6">
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                            <svg class="w-6 h-6 mr-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <polyline points="22,12 18,8 14,12 10,8 6,12 2,8"></polyline>
+                            </svg>
+                            Bonos Argentinos - Análisis Completo
+                        </h2>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="text-slate-400 text-sm border-b border-slate-600">
+                                        <th class="text-left py-3 px-2">Instrumento</th>
+                                        <th class="text-right py-3 px-2">Precio</th>
+                                        <th class="text-right py-3 px-2">Yield</th>
+                                        <th class="text-right py-3 px-2">Duration</th>
+                                        <th class="text-right py-3 px-2">Spread</th>
+                                        <th class="text-center py-3 px-2">Rating</th>
+                                        <th class="text-right py-3 px-2">Volumen</th>
+                                        <th class="text-center py-3 px-2">Sector</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bondsTable">
+                                    <!-- Los bonos se generan dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-xl font-semibold mb-4">Spreads por Instrumento (bps)</h2>
+                        <div class="chart-container">
+                            <canvas id="bondsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Calculator -->
+            <div id="tab-calculator" class="tab-content" style="display: none;">
+                <div class="space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                            <h2 class="text-2xl font-semibold mb-6 flex items-center">
+                                <svg class="w-6 h-6 mr-3 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                                    <line x1="8" x2="16" y1="6" y2="6"></line>
+                                    <line x1="8" x2="8" y1="10" y2="14"></line>
+                                    <line x1="12" x2="12" y1="10" y2="14"></line>
+                                    <line x1="16" x2="16" y1="10" y2="14"></line>
+                                </svg>
+                                Calculadora Avanzada de Bonos
+                            </h2>
+                            <div class="space-y-5">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-400 mb-2">Valor Nominal (ARS)</label>
+                                        <input type="number" id="faceValue" value="1000" class="w-full bg-slate-700 rounded-lg px-4 py-3 text-white border border-slate-600 focus:border-blue-400 focus:outline-none transition-colors">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-400 mb-2">Tasa Cupón (%)</label>
+                                        <input type="number" id="couponRate" value="5" step="0.1" class="w-full bg-slate-700 rounded-lg px-4 py-3 text-white border border-slate-600 focus:border-blue-400 focus:outline-none transition-colors">
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-400 mb-2">Años al Vencimiento</label>
+                                        <input type="number" id="yearsToMaturity" value="10" class="w-full bg-slate-700 rounded-lg px-4 py-3 text-white border border-slate-600 focus:border-blue-400 focus:outline-none transition-colors">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-400 mb-2">Tasa de Mercado (%)</label>
+                                        <input type="number" id="marketRate" value="4" step="0.1" class="w-full bg-slate-700 rounded-lg px-4 py-3 text-white border border-slate-600 focus:border-blue-400 focus:outline-none transition-colors">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                            <h2 class="text-xl font-semibold mb-6">Resultados del Análisis</h2>
+                            <div class="space-y-4">
+                                <div class="bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-lg p-4 border border-green-500/20">
+                                    <p class="text-slate-400 text-sm mb-1">Precio Teórico</p>
+                                    <p id="bondPrice" class="text-3xl font-bold text-green-400">ARS $1,081.11</p>
+                                    <p id="bondPremium" class="text-sm text-slate-400 mt-1">
+                                        Prima: <span class="font-semibold ml-1 text-green-400">8.11%</span>
+                                    </p>
+                                </div>
+                                
+                                <div class="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-4 border border-blue-500/20">
+                                    <p class="text-slate-400 text-sm mb-1">Duration Modificada</p>
+                                    <p id="bondDuration" class="text-2xl font-bold text-blue-400">8.11 años</p>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+                                        <p class="text-slate-400 text-xs">Yield to Maturity</p>
+                                        <p id="yieldToMaturity" class="text-lg font-bold text-yellow-400">4.00%</p>
+                                    </div>
+                                    <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+                                        <p class="text-slate-400 text-xs">Cupón Anual</p>
+                                        <p id="annualCoupon" class="text-lg font-bold text-orange-400">$50.00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Analytics -->
+            <div id="tab-analytics" class="tab-content" style="display: none;">
+                <div class="space-y-6">
+                    <div id="analyticsCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <!-- Las cards se generan dinámicamente -->
+                    </div>
+
+                    <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                        <h2 class="text-xl font-semibold mb-4">Curva de Rendimientos Simulada</h2>
+                        <div class="chart-container">
+                            <canvas id="yieldCurveChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-12 bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+                <div class="flex items-center justify-center">
+                    <div class="flex items-center space-x-6 text-sm text-slate-500">
+                        <span>🏦 BCRA</span>
+                        <span>📊 30 datos</span>
+                        <span>💰 6 bonos</span>
+                        <span>🌍 12 monedas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos del dashboard
+        let dashboardData = {
+            cotizaciones: [
+                { codigoMoneda: "USD", descripcion: "DOLAR ESTADOUNIDENSE", tipoPase: 0.00115, tipoCotizacion: 1023.50, variacion: 2.3 },
+                { codigoMoneda: "EUR", descripcion: "EURO", tipoPase: 0.00106, tipoCotizacion: 1098.75, variacion: -1.2 },
+                { codigoMoneda: "BRL", descripcion: "REAL", tipoPase: 0.00583, tipoCotizacion: 171.45, variacion: 0.8 },
+                { codigoMoneda: "CLP", descripcion: "PESO CHILENO", tipoPase: 0.91250, tipoCotizacion: 1.096, variacion: -0.3 },
+                { codigoMoneda: "UYU", descripcion: "PESO URUGUAYO", tipoPase: 0.02389, tipoCotizacion: 41.87, variacion: 1.1 },
+                { codigoMoneda: "GBP", descripcion: "LIBRA ESTERLINA", tipoPase: 0.00092, tipoCotizacion: 1285.30, variacion: -0.7 }
+            ],
+            monedas: [
+                { codigo: "USD", denominacion: "DOLAR ESTADOUNIDENSE", region: "América" },
+                { codigo: "EUR", denominacion: "EURO", region: "Europa" },
+                { codigo: "BRL", denominacion: "REAL", region: "América" },
+                { codigo: "CLP", denominacion: "PESO CHILENO", region: "América" },
+                { codigo: "UYU", denominacion: "PESO URUGUAYO", region: "América" },
+                { codigo: "GBP", denominacion: "LIBRA ESTERLINA", region: "Europa" },
+                { codigo: "CHF", denominacion: "FRANCO SUIZO", region: "Europa" },
+                { codigo: "JPY", denominacion: "YEN JAPONES", region: "Asia" },
+                { codigo: "CAD", denominacion: "DOLAR CANADIENSE", region: "América" },
+                { codigo: "AUD", denominacion: "DOLAR AUSTRALIANO", region: "Oceanía" },
+                { codigo: "CNY", denominacion: "YUAN CHINO", region: "Asia" },
+                { codigo: "MXN", denominacion: "PESO MEXICANO", region: "América" }
+            ],
+            bonos: [
+                { name: 'BONCER 2030', price: 98.25, yield: 4.18, duration: 6.8, spread: 318, rating: 'B+', volume: 245.6, sector: 'Soberano', maturity: '2030-01-15' },
+                { name: 'BONCER 2035', price: 102.15, yield: 3.95, duration: 8.9, spread: 285, rating: 'B+', volume: 156.3, sector: 'Soberano', maturity: '2035-07-22' },
+                { name: 'BONAR 2029', price: 95.80, yield: 5.25, duration: 5.2, spread: 425, rating: 'B', volume: 89.7, sector: 'Soberano', maturity: '2029-03-10' },
+                { name: 'TC20 2030', price: 88.45, yield: 6.75, duration: 4.1, spread: 575, rating: 'B-', volume: 67.2, sector: 'Provincial', maturity: '2030-12-05' },
+                { name: 'BPBA 2027', price: 92.30, yield: 5.80, duration: 3.8, spread: 480, rating: 'BB-', volume: 123.4, sector: 'Provincial', maturity: '2027-09-18' },
+                { name: 'AL30', price: 45.20, yield: 12.85, duration: 2.1, spread: 1180, rating: 'CCC+', volume: 89.1, sector: 'Soberano', maturity: '2030-07-09' }
+            ],
+            selectedCurrencies: ['USD', 'EUR', 'BRL'],
+            historicalRange: 30,
+            historicalData: []
+        };
+
+        // Colores para monedas
+        const currencyColors = {
+            USD: '#10B981', EUR: '#F59E0B', BRL: '#EF4444', CLP: '#8B5CF6',
+            UYU: '#06B6D4', GBP: '#F97316', CHF: '#84CC16', JPY: '#EC4899',
+            CAD: '#6366F1', AUD: '#14B8A6', CNY: '#F472B6', MXN: '#A78BFA'
+        };
+
+        // Referencias de gráficos
+        let currencyChart = null;
+        let bondsChart = null;
+        let yieldCurveChart = null;
+
+        // Funciones principales
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('es-AR');
+        }
+
+        function generateHistoricalData() {
+            const basePrices = {
+                USD: 1020, EUR: 1095, BRL: 171, CLP: 1.096,
+                UYU: 42, GBP: 1285, CHF: 1150, JPY: 7.2, 
+                CAD: 750, AUD: 680, CNY: 142, MXN: 18.5
+            };
+            
+            dashboardData.historicalData = [];
+            
+            for (let i = dashboardData.historicalRange - 1; i >= 0; i--) {
+                const fecha = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+                
+                let fechaFormatted;
+                if (dashboardData.historicalRange <= 30) {
+                    fechaFormatted = fecha.toLocaleDateString('es-AR', { month: 'short', day: 'numeric' });
+                } else if (dashboardData.historicalRange <= 365) {
+                    fechaFormatted = fecha.toLocaleDateString('es-AR', { month: 'short', day: 'numeric', year: '2-digit' });
+                } else {
+                    fechaFormatted = fecha.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
+                }
+                
+                const dataPoint = {
+                    fecha: fecha.toISOString().split('T')[0],
+                    fechaFormatted: fechaFormatted
+                };
+
+                Object.keys(basePrices).forEach(currency => {
+                    const basePrice = basePrices[currency];
+                    const trendFactor = Math.sin((dashboardData.historicalRange - i) / 10) * 0.03;
+                    const volatility = (Math.random() - 0.5) * 0.02;
+                    const variation = (trendFactor + volatility) * basePrice;
+                    dataPoint[currency] = Math.max(0, basePrice + variation);
+                });
+
+                dashboardData.historicalData.push(dataPoint);
+            }
+        }
+
+        function showTab(tabName) {
+            // Ocultar todos los tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            
+            // Remover clase active de todos los botones
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar tab seleccionado
+            document.getElementById(`tab-${tabName}`).style.display = 'block';
+            
+            // Agregar clase active al botón
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+            
+            // Actualizar gráficos si es necesario
+            setTimeout(() => {
+                if (tabName === 'currencies') {
+                    updateCurrencyChart();
+                } else if (tabName === 'bonds') {
+                    updateBondsChart();
+                } else if (tabName === 'analytics') {
+                    updateYieldCurveChart();
+                }
+            }, 100);
+        }
+
+        function renderCurrencyCards() {
+            const container = document.getElementById('currencyCards');
+            container.innerHTML = '';
+            
+            dashboardData.cotizaciones.forEach((cotiz, index) => {
+                const card = document.createElement('div');
+                card.className = 'group bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300';
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                                <path d="M2 12h20"></path>
+                            </svg>
+                            <span class="font-bold text-sm">${cotiz.codigoMoneda}</span>
+                        </div>
+                        <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="12" x2="12" y1="2" y2="22"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-2 truncate">${cotiz.descripcion}</p>
+                    <p class="text-xl font-bold text-white mb-1">${cotiz.tipoCotizacion.toFixed(2)}</p>
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="text-slate-500">Pase: ${cotiz.tipoPase.toFixed(4)}</span>
+                        <span class="font-medium ${cotiz.variacion >= 0 ? 'text-green-400' : 'text-red-400'}">
+                            ${cotiz.variacion >= 0 ? '+' : ''}${cotiz.variacion.toFixed(2)}%
+                        </span>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        function renderBondsHighlight() {
+            const container = document.getElementById('bondsHighlight');
+            container.innerHTML = '';
+            
+            dashboardData.bonos.slice(0, 4).forEach(bond => {
+                const bondDiv = document.createElement('div');
+                bondDiv.className = 'flex items-center justify-between p-3 bg-slate-700/30 rounded-lg';
+                
+                bondDiv.innerHTML = `
+                    <div>
+                        <p class="font-medium">${bond.name}</p>
+                        <p class="text-sm text-slate-400">${bond.sector} • ${bond.rating}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold">${bond.price.toFixed(2)}</p>
+                        <p class="text-sm text-blue-400">${bond.yield.toFixed(2)}%</p>
+                    </div>
+                `;
+                
+                container.appendChild(bondDiv);
+            });
+        }
+
+        function renderMarketStats() {
+            const container = document.getElementById('marketStats');
+            const upCurrencies = dashboardData.cotizaciones.filter(c => c.variacion >= 0).length;
+            const downCurrencies = dashboardData.cotizaciones.filter(c => c.variacion < 0).length;
+            const lowYieldBonds = dashboardData.bonos.filter(b => b.yield < 6).length;
+            const totalVolume = dashboardData.bonos.reduce((acc, b) => acc + b.volume, 0);
+            
+            container.innerHTML = `
+                <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                    <p class="text-2xl font-bold text-green-400">${upCurrencies}</p>
+                    <p class="text-sm text-slate-400">Monedas en alza</p>
+                </div>
+                <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                    <p class="text-2xl font-bold text-red-400">${downCurrencies}</p>
+                    <p class="text-sm text-slate-400">Monedas en baja</p>
+                </div>
+                <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                    <p class="text-2xl font-bold text-blue-400">${lowYieldBonds}</p>
+                    <p class="text-sm text-slate-400">Bonos bajo 6%</p>
+                </div>
+                <div class="text-center p-4 bg-slate-700/30 rounded-lg">
+                    <p class="text-2xl font-bold text-purple-400">${totalVolume.toFixed(0)}M</p>
+                    <p class="text-sm text-slate-400">Volumen total</p>
+                </div>
+            `;
+        }
+
+        function renderCurrencySelector() {
+            const container = document.getElementById('currencySelector');
+            container.innerHTML = '';
+            
+            Object.keys(currencyColors).forEach(currency => {
+                const button = document.createElement('button');
+                button.className = `currency-button px-3 py-2 text-sm rounded-lg border transition-all duration-200 ${
+                    dashboardData.selectedCurrencies.includes(currency)
+                        ? 'border-blue-400 text-white shadow-lg scale-105 selected'
+                        : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                }`;
+                
+                if (dashboardData.selectedCurrencies.includes(currency)) {
+                    button.style.backgroundColor = currencyColors[currency] + '20';
+                    button.style.borderColor = currencyColors[currency];
+                }
+                
+                button.innerHTML = `
+                    <span class="inline-block w-3 h-3 rounded-full mr-2" style="background-color: ${currencyColors[currency]}"></span>
+                    ${currency}
+                `;
+                
+                button.onclick = () => toggleCurrency(currency);
+                container.appendChild(button);
+            });
+            
+            document.getElementById('selectedCount').textContent = dashboardData.selectedCurrencies.length;
+        }
+
+        function toggleCurrency(currency) {
+            if (dashboardData.selectedCurrencies.includes(currency)) {
+                dashboardData.selectedCurrencies = dashboardData.selectedCurrencies.filter(c => c !== currency);
+            } else if (dashboardData.selectedCurrencies.length < 5) {
+                dashboardData.selectedCurrencies.push(currency);
+            }
+            
+            renderCurrencySelector();
+            updateCurrencyChart();
+        }
+
+        function renderAllCurrencies() {
+            const container = document.getElementById('allCurrencies');
+            container.innerHTML = '';
+            
+            dashboardData.monedas.forEach(moneda => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-700/30 rounded-lg p-4 hover:bg-slate-700/50 transition-colors';
+                
+                div.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-lg text-blue-400">${moneda.codigo}</span>
+                        <span class="text-xs px-2 py-1 bg-slate-600 rounded-full">${moneda.region}</span>
+                    </div>
+                    <p class="text-sm text-slate-300">${moneda.denominacion}</p>
+                `;
+                
+                container.appendChild(div);
+            });
+        }
+
+        function renderBondsTable() {
+            const container = document.getElementById('bondsTable');
+            container.innerHTML = '';
+            
+            dashboardData.bonos.forEach(bond => {
+                const row = document.createElement('tr');
+                row.className = 'bond-row border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors';
+                
+                const getRatingColor = (rating) => {
+                    if (rating.startsWith('BB')) return 'bg-green-500/20 text-green-400';
+                    if (rating.startsWith('B')) return 'bg-yellow-500/20 text-yellow-400';
+                    return 'bg-red-500/20 text-red-400';
+                };
+                
+                row.innerHTML = `
+                    <td class="py-4 px-2">
+                        <div>
+                            <p class="font-semibold text-white">${bond.name}</p>
+                            <p class="text-xs text-slate-400">${bond.maturity}</p>
+                        </div>
+                    </td>
+                    <td class="text-right py-4 px-2 font-mono">${bond.price.toFixed(2)}</td>
+                    <td class="text-right py-4 px-2 text-blue-400 font-semibold">${bond.yield.toFixed(2)}%</td>
+                    <td class="text-right py-4 px-2">${bond.duration}</td>
+                    <td class="text-right py-4 px-2 text-orange-400 font-semibold">${bond.spread} bps</td>
+                    <td class="text-center py-4 px-2">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${getRatingColor(bond.rating)}">
+                            ${bond.rating}
+                        </span>
+                    </td>
+                    <td class="text-right py-4 px-2 text-slate-300">${bond.volume.toFixed(1)}M</td>
+                    <td class="text-center py-4 px-2">
+                        <span class="px-2 py-1 rounded-full text-xs ${
+                            bond.sector === 'Soberano' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                        }">
+                            ${bond.sector}
+                        </span>
+                    </td>
+                `;
+                
+                container.appendChild(row);
+            });
+        }
+
+        function updateCurrencyChart() {
+            const canvas = document.getElementById('currencyChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            if (currencyChart) {
+                currencyChart.destroy();
+            }
+
+            const datasets = dashboardData.selectedCurrencies.map(currency => ({
+                label: `${currency}/ARS`,
+                data: dashboardData.historicalData.map(item => item[currency] || 0),
+                borderColor: currencyColors[currency],
+                backgroundColor: currencyColors[currency] + '20',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4
+            }));
+
+            currencyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dashboardData.historicalData.map(item => item.fechaFormatted),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#9CA3AF' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        },
+                        y: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBondsChart() {
+            const canvas = document.getElementById('bondsChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            if (bondsChart) {
+                bondsChart.destroy();
+            }
+
+            bondsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dashboardData.bonos.map(bond => bond.name),
+                    datasets: [{
+                        label: 'Spread (bps)',
+                        data: dashboardData.bonos.map(bond => bond.spread),
+                        backgroundColor: '#F97316',
+                        borderColor: '#EA580C',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#9CA3AF' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { 
+                                color: '#9CA3AF',
+                                maxRotation: 45 
+                            },
+                            grid: { color: '#374151' }
+                        },
+                        y: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateYieldCurveChart() {
+            const canvas = document.getElementById('yieldCurveChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            if (yieldCurveChart) {
+                yieldCurveChart.destroy();
+            }
+
+            const yieldData = [
+                { maturity: '1Y', yield: 3.2 },
+                { maturity: '2Y', yield: 3.8 },
+                { maturity: '5Y', yield: 4.5 },
+                { maturity: '10Y', yield: 5.2 },
+                { maturity: '20Y', yield: 5.8 },
+                { maturity: '30Y', yield: 6.1 }
+            ];
+
+            yieldCurveChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yieldData.map(item => item.maturity),
+                    datasets: [{
+                        label: 'Yield (%)',
+                        data: yieldData.map(item => item.yield),
+                        borderColor: '#8B5CF6',
+                        backgroundColor: '#8B5CF6',
+                        borderWidth: 3,
+                        pointBackgroundColor: '#8B5CF6',
+                        pointBorderColor: '#8B5CF6',
+                        pointRadius: 6,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#9CA3AF' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        },
+                        y: {
+                            ticks: { color: '#9CA3AF' },
+                            grid: { color: '#374151' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderAnalyticsCards() {
+            const container = document.getElementById('analyticsCards');
+            const avgUSD = dashboardData.cotizaciones.find(c => c.codigoMoneda === 'USD')?.tipoCotizacion || 0;
+            const bestBond = dashboardData.bonos.reduce((best, bond) => bond.yield < best.yield ? bond : best, dashboardData.bonos[0]);
+            const volatility = Math.abs(dashboardData.cotizaciones.reduce((acc, c) => acc + c.variacion, 0) / dashboardData.cotizaciones.length);
+            const totalSpread = dashboardData.bonos.reduce((acc, bond) => acc + bond.spread, 0);
+            
+            container.innerHTML = `
+                <div class="bg-gradient-to-r from-blue-500/10 to-blue-600/10 rounded-xl p-4 border border-blue-500/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-400 text-sm font-medium">Promedio USD</p>
+                            <p class="text-2xl font-bold text-white">${avgUSD.toFixed(2)}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="22,7 13.5,15.5 8.5,10.5 2,17"/>
+                            <polyline points="16,7 22,7 22,13"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-green-500/10 to-green-600/10 rounded-xl p-4 border border-green-500/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-400 text-sm font-medium">Mejor Bono</p>
+                            <p class="text-2xl font-bold text-white">${bestBond?.name || 'N/A'}</p>
+                        </div>
+                        <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"/>
+                            <circle cx="12" cy="12" r="6"/>
+                            <circle cx="12" cy="12" r="2"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-purple-500/10 to-purple-600/10 rounded-xl p-4 border border-purple-500/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-400 text-sm font-medium">Volatilidad</p>
+                            <p class="text-2xl font-bold text-white">${volatility.toFixed(1)}%</p>
+                        </div>
+                        <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <polyline points="22,12 18,8 14,12 10,8 6,12 2,8"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-r from-orange-500/10 to-orange-600/10 rounded-xl p-4 border border-orange-500/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-orange-400 text-sm font-medium">Total Spread</p>
+                            <p class="text-2xl font-bold text-white">${totalSpread} bps</p>
+                        </div>
+                        <svg class="w-8 h-8 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <line x1="12" x2="12" y1="20" y2="10"/>
+                            <line x1="18" x2="18" y1="20" y2="4"/>
+                            <line x1="6" x2="6" y1="20" y2="16"/>
+                        </svg>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateCalculator() {
+            const faceValue = parseFloat(document.getElementById('faceValue').value) || 1000;
+            const couponRate = parseFloat(document.getElementById('couponRate').value) || 5;
+            const yearsToMaturity = parseFloat(document.getElementById('yearsToMaturity').value) || 10;
+            const marketRate = parseFloat(document.getElementById('marketRate').value) || 4;
+            
+            // Calcular precio del bono
+            const couponPayment = (faceValue * couponRate) / 100;
+            let presentValue = 0;
+            
+            for (let t = 1; t <= yearsToMaturity; t++) {
+                presentValue += couponPayment / Math.pow(1 + marketRate / 100, t);
+            }
+            presentValue += faceValue / Math.pow(1 + marketRate / 100, yearsToMaturity);
+            
+            // Calcular duration
+            const deltaY = 0.01;
+            const upPrice = calculateBondPriceWithRate(faceValue, couponRate, yearsToMaturity, marketRate + deltaY);
+            const downPrice = calculateBondPriceWithRate(faceValue, couponRate, yearsToMaturity, marketRate - deltaY);
+            const duration = -(upPrice - downPrice) / (2 * presentValue * deltaY);
+            
+            // Actualizar UI
+            document.getElementById('bondPrice').textContent = `ARS ${presentValue.toFixed(2)}`;
+            document.getElementById('bondDuration').textContent = `${duration.toFixed(2)} años`;
+            document.getElementById('yieldToMaturity').textContent = `${marketRate.toFixed(2)}%`;
+            document.getElementById('annualCoupon').textContent = `${couponPayment.toFixed(2)}`;
+            
+            const premium = ((presentValue - faceValue) / faceValue * 100);
+            const premiumText = premium > 0 ? 'Prima' : 'Descuento';
+            const premiumColor = premium > 0 ? 'text-green-400' : 'text-red-400';
+            
+            document.getElementById('bondPremium').innerHTML = `
+                ${premiumText}: <span class="font-semibold ml-1 ${premiumColor}">${Math.abs(premium).toFixed(2)}%</span>
+            `;
+        }
+
+        function calculateBondPriceWithRate(faceValue, couponRate, yearsToMaturity, rate) {
+            const couponPayment = (faceValue * couponRate) / 100;
+            let presentValue = 0;
+            
+            for (let t = 1; t <= yearsToMaturity; t++) {
+                presentValue += couponPayment / Math.pow(1 + rate / 100, t);
+            }
+            presentValue += faceValue / Math.pow(1 + rate / 100, yearsToMaturity);
+            return presentValue;
+        }
+
+        function updateData() {
+            // Simular actualización de datos
+            dashboardData.cotizaciones.forEach(cotiz => {
+                cotiz.tipoCotizacion = Math.max(0, cotiz.tipoCotizacion + (Math.random() - 0.5) * 3);
+                cotiz.variacion = (Math.random() - 0.5) * 4;
+            });
+            
+            dashboardData.bonos.forEach(bond => {
+                bond.price = Math.max(0, bond.price + (Math.random() - 0.5) * 0.4);
+                bond.yield = Math.max(0, bond.yield + (Math.random() - 0.5) * 0.08);
+                bond.volume = Math.max(0, bond.volume + (Math.random() - 0.5) * 10);
+            });
+            
+            updateLastUpdate();
+            renderCurrencyCards();
+            renderBondsHighlight();
+            renderMarketStats();
+            renderBondsTable();
+            renderAnalyticsCards();
+        }
+
+        // Event Listeners
+        document.getElementById('historicalRange').addEventListener('change', function() {
+            dashboardData.historicalRange = parseInt(this.value);
+            generateHistoricalData();
+            updateCurrencyChart();
+        });
+
+        ['faceValue', 'couponRate', 'yearsToMaturity', 'marketRate'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateCalculator);
+        });
+
+        // Inicialización
+        function initDashboard() {
+            generateHistoricalData();
+            updateLastUpdate();
+            renderCurrencyCards();
+            renderBondsHighlight();
+            renderMarketStats();
+            renderCurrencySelector();
+            renderAllCurrencies();
+            renderBondsTable();
+            renderAnalyticsCards();
+            updateCalculator();
+            
+            // Ocultar loading y mostrar dashboard
+            setTimeout(() => {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                
+                // Inicializar gráficos después de mostrar el dashboard
+                setTimeout(() => {
+                    updateCurrencyChart();
+                    updateBondsChart();
+                    updateYieldCurveChart();
+                }, 100);
+            }, 2000);
+            
+            // Actualizar datos cada 45 segundos
+            setInterval(updateData, 45000);
+        }
+
+        // Iniciar cuando carga la página
+        window.addEventListener('load', initDashboard);
+    </script>
+</body>
+</html>
