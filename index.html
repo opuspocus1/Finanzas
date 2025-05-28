@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DivisAR - Portal de Divisas Argentinas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #f39c12;
+            --accent-color: #3498db;
+            --success-color: #27ae60;
+            --danger-color: #e74c3c;
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-light: #ecf0f1;
+            --text-muted: #95a5a6;
+            --border-color: #34495e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-color);
+            color: var(--text-light);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Background animation */
+        .bg-animation {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.03;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                var(--accent-color) 10px,
+                var(--accent-color) 20px
+            );
+            animation: backgroundMove 20s linear infinite;
+        }
+
+        @keyframes backgroundMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--card-bg) 100%);
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--secondary-color) 0%, transparent 70%);
+            opacity: 0.1;
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.1); opacity: 0.15; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Logo Styles */
+        .floating {
+            animation: floating 6s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .title {
+            flex: 1;
+        }
+
+        .title h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .title p {
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 3rem 0;
+        }
+
+        /* Controls */
+        .controls {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .controls::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-color), var(--secondary-color), var(--accent-color));
+            background-size: 200% 100%;
+            animation: gradientMove 3s ease infinite;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-color);
+            color: var(--text-light);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Currency Grid */
+        .currency-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .currency-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .currency-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .currency-card:hover::before {
+            opacity: 0.05;
+        }
+
+        .currency-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .currency-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .currency-code {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--secondary-color);
+            text-shadow: 0 0 10px rgba(243, 156, 18, 0.3);
+        }
+
+        .currency-flag {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .currency-name {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            text-transform: capitalize;
+        }
+
+        .currency-values {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .value-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: var(--bg-color);
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .value-row:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .value-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .value-amount {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error State */
+        .error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid var(--danger-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--danger-color);
+            margin: 2rem 0;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--card-bg);
+            padding: 2rem 0;
+            text-align: center;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            margin-top: 4rem;
+        }
+
+        .footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer a:hover {
+            color: var(--secondary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .title h1 {
+                font-size: 2rem;
+            }
+            
+            .floating i {
+                font-size: 2.5rem !important;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Update timestamp */
+        .update-time {
+            text-align: center;
+            color: var(--text-muted);
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .update-time strong {
+            color: var(--accent-color);
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            background: var(--card-bg);
+            border-radius: 16px;
+            margin: 2rem 0;
+        }
+
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Historical Chart Section */
+        .chart-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            background: var(--bg-color);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .currency-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .currency-chip {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 2px solid var(--border-color);
+            background: var(--bg-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .currency-chip.selected {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .currency-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <header class="header">
+        <div class="container">
+            <div class="logo-container">
+                <div class="floating">
+                    <i class="fas fa-coins text-3xl text-yellow-400" style="font-size: 3rem; color: var(--secondary-color);"></i>
+                </div>
+                <div class="title">
+                    <h1 class="gradient-text">DivisAR</h1>
+                    <p>Portal de Divisas Argentinas - BCRA</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="controls">
+                <div class="controls-grid">
+                    <div class="form-group">
+                        <label for="fecha">Fecha de Cotización</label>
+                        <input type="date" id="fecha" max="">
+                    </div>
+                    <div class="form-group">
+                        <label for="moneda">Filtrar por Moneda</label>
+                        <select id="moneda">
+                            <option value="">Todas las monedas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="refreshAllData()">
+                            <span>Consultar Cotizaciones</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="updateTime" class="update-time" style="display: none;">
+                Última actualización: <strong id="updateTimestamp"></strong>
+            </div>
+
+            <div id="currencyContainer" class="currency-grid">
+                <!-- Currencies will be loaded here -->
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>Cargando cotizaciones...</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;">
+                <p>Error al cargar las cotizaciones. Por favor, intente nuevamente.</p>
+            </div>
+
+            <div id="noResults" class="no-results" style="display: none;">
+                <i>📊</i>
+                <h3>No hay cotizaciones disponibles</h3>
+                <p>No se encontraron cotizaciones para la fecha seleccionada.</p>
+            </div>
+
+            <!-- Historical Chart Section -->
+            <div class="chart-section" id="chartSection" style="display: none;">
+                <h2 style="font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--text-light);">
+                    📈 Análisis Histórico de Divisas
+                </h2>
+                
+                <div class="chart-controls">
+                    <div class="form-group">
+                        <label for="dateFrom">Fecha Desde</label>
+                        <input type="date" id="dateFrom" min="2013-02-01">
+                    </div>
+                    <div class="form-group">
+                        <label for="dateTo">Fecha Hasta</label>
+                        <input type="date" id="dateTo" min="2013-02-01">
+                    </div>
+                    <div class="form-group">
+                        <button class="btn btn-primary" onclick="toggleChartSection()">
+                            <span id="chartToggleText">Ver Gráfico Histórico</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="chartContent" style="display: none;">
+                    <div class="currency-selector" id="currencySelector">
+                        <p style="width: 100%; margin-bottom: 0.5rem; color: var(--text-muted);">
+                            Selecciona las divisas a comparar (máximo 5):
+                        </p>
+                        <!-- Currency chips will be added here dynamically -->
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="historicalChart"></canvas>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-primary" onclick="updateChart()">
+                            Actualizar Gráfico
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Datos provistos por el <a href="https://www.bcra.gob.ar" target="_blank">Banco Central de la República Argentina</a></p>
+            <p>© 2024 DivisAR - Todos los derechos reservados</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'https://api.bcra.gob.ar/estadisticascambiarias/v1.0';
+        const DOLAR_API_URL = 'https://dolarapi.com/v1';
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        const proxied = (url) => `${CORS_PROXY}${url}`;
+        
+        // Currency flags mapping (emoji flags)
+        const currencyFlags = {
+            'USD': '🇺🇸',
+            'EUR': '🇪🇺',
+            'GBP': '🇬🇧',
+            'JPY': '🇯🇵',
+            'BRL': '🇧🇷',
+            'CLP': '🇨🇱',
+            'UYU': '🇺🇾',
+            'CNY': '🇨🇳',
+            'AUD': '🇦🇺',
+            'CAD': '🇨🇦',
+            'CHF': '🇨🇭',
+            'DKK': '🇩🇰',
+            'NOK': '🇳🇴',
+            'SEK': '🇸🇪',
+            'MXN': '🇲🇽',
+            'ILS': '🇮🇱',
+            'KRW': '🇰🇷',
+            'INR': '🇮🇳',
+            'RUB': '🇷🇺',
+            'ZAR': '🇿🇦',
+            'default': '💱'
+        };
+
+        // Chart colors for different currencies
+        const currencyColors = {
+            'USD': '#10B981',
+            'EUR': '#3B82F6',
+            'BRL': '#F59E0B',
+            'GBP': '#EF4444',
+            'CHF': '#8B5CF6',
+            'JPY': '#EC4899',
+            'CAD': '#06B6D4',
+            'AUD': '#84CC16',
+            'CNY': '#DC2626',
+            'CLP': '#7C3AED',
+            'UYU': '#059669',
+            'MXN': '#D97706',
+            'default': '#6B7280'
+        };
+
+        // Global variables
+        let selectedCurrencies = [];
+        let historicalChart = null;
+        let allCurrencies = [];
+        let dolarData = null;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set max date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fecha').max = today;
+            document.getElementById('fecha').value = today;
+            document.getElementById('dateTo').max = today;
+            document.getElementById('dateTo').value = today;
+            
+            // Set default from date (1 month ago)
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            document.getElementById('dateFrom').value = oneMonthAgo.toISOString().split('T')[0];
+            
+            // Set minimum date limit to Feb 1, 2013 (API historical limit)
+            const minDate = '2013-02-01';
+            document.getElementById('dateFrom').min = minDate;
+            document.getElementById('dateTo').min = minDate;
+            
+            // Load initial data
+            loadMaestroMonedas().then(async () => {
+                // Cargar ambas APIs en paralelo y esperar a que terminen
+                await Promise.all([loadCotizaciones(), loadDolarData()]);
+                console.log('Ambas APIs cargadas, actualizando display...');
+                
+                // Refrescar la visualización con todos los datos
+                const fecha = document.getElementById('fecha').value;
+                const monedaFilter = document.getElementById('moneda').value;
+                
+                // Simular un re-render de las cotizaciones ya cargadas
+                const container = document.getElementById('currencyContainer');
+                if (container.children.length > 0) {
+                    // Volver a cargar para mostrar la info completa
+                    loadCotizaciones();
+                }
+            });
+
+            // Show chart section
+            document.getElementById('chartSection').style.display = 'block';
+        });
+
+        // Load DolarAPI data for USD buy/sell rates
+        async function loadDolarData() {
+            try {
+                console.log('Cargando datos de DolarAPI...');
+                const response = await fetch(`${DOLAR_API_URL}/dolares`);
+                if (response.ok) {
+                    dolarData = await response.json();
+                    console.log('DolarAPI data loaded:', dolarData);
+                    return dolarData;
+                } else {
+                    console.warn('Failed to load DolarAPI data');
+                    dolarData = null;
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error loading DolarAPI data:', error);
+                dolarData = null;
+                return null;
+            }
+        }
+        async function loadMaestroMonedas() {
+            // Limpia los selects antes de poblar
+            const select = document.getElementById('moneda');
+            select.innerHTML = '<option value="">Todas las monedas</option>';
+
+            try {
+                // Llamada a la API del BCRA a través del proxy CORS
+                const response = await fetch(
+                    proxied(`${API_BASE_URL}/Maestros/Divisas`),
+                    { headers: { 'Accept': 'application/json' } }
+                );
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                const json = await response.json();
+                allCurrencies = Array.isArray(json.results) && json.results.length ? json.results : [];
+            } catch (err) {
+                console.warn('Fallo la API, usando lista local', err);
+                allCurrencies = [
+                    {codigo:'USD', denominacion:'Dólar estadounidense'},
+                    {codigo:'EUR', denominacion:'Euro'},
+                    {codigo:'BRL', denominacion:'Real brasileño'},
+                    {codigo:'GBP', denominacion:'Libra esterlina'},
+                    {codigo:'JPY', denominacion:'Yen japonés'},
+                    {codigo:'ARS', denominacion:'Peso argentino'}
+                ];
+            }
+
+            // Poblar el select y los chips
+            allCurrencies.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.codigo;
+                opt.textContent = `${c.codigo} - ${c.denominacion}`;
+                select.appendChild(opt);
+            });
+
+            // Seleccionar USD por defecto
+            select.value = 'USD';
+
+            // Inicializar los chips del gráfico
+            initializeCurrencySelector();
+        }
+
+        // Load exchange rates
+        async function loadCotizaciones() {
+            const fecha = document.getElementById('fecha').value;
+            const monedaFilter = document.getElementById('moneda').value;
+            
+            showLoading(true);
+            hideError();
+            hideNoResults();
+            
+            try {
+                let url = `${API_BASE_URL}/Cotizaciones`;
+                if (fecha) {
+                    url += `?fecha=${fecha}`;
+                }
+                
+                const response = await fetch(proxied(url));
+                if (!response.ok) throw new Error('Failed to load exchange rates');
+                
+                const data = await response.json();
+                
+                if (data.results.detalle && data.results.detalle.length > 0) {
+                    // Asegurar que también tenemos los datos del dólar si es necesario
+                    if (!dolarData && (monedaFilter === 'USD' || monedaFilter === '')) {
+                        console.log('Cargando datos de DolarAPI antes de mostrar...');
+                        await loadDolarData();
+                    }
+                    
+                    displayCotizaciones(data.results, monedaFilter);
+                    updateTimestamp(data.results.fecha || fecha);
+                } else {
+                    showNoResults();
+                }
+            } catch (error) {
+                console.error('Error loading exchange rates:', error);
+                showError();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Display exchange rates
+        function displayCotizaciones(data, monedaFilter) {
+            const container = document.getElementById('currencyContainer');
+            container.innerHTML = '';
+            
+            let cotizaciones = data.detalle;
+            
+            // Filter by currency if selected
+            if (monedaFilter) {
+                cotizaciones = cotizaciones.filter(c => c.codigoMoneda === monedaFilter);
+            }
+            
+            if (cotizaciones.length === 0) {
+                showNoResults();
+                return;
+            }
+            
+            cotizaciones.forEach(cotizacion => {
+                const card = createCurrencyCard(cotizacion);
+                container.appendChild(card);
+            });
+        }
+
+        // Create currency card
+        function createCurrencyCard(cotizacion) {
+            const card = document.createElement('div');
+            card.className = 'currency-card';
+            
+            const flag = currencyFlags[cotizacion.codigoMoneda] || currencyFlags.default;
+            
+            // Check if this is USD and we have DolarAPI data
+            let additionalInfo = '';
+            if (cotizacion.codigoMoneda === 'USD' && dolarData && Array.isArray(dolarData)) {
+                const oficialData = dolarData.find(d => d.casa === 'oficial');
+                const blueData = dolarData.find(d => d.casa === 'blue');
+                
+                if (oficialData || blueData) {
+                    additionalInfo = `
+                        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
+                            <h4 style="color: var(--accent-color); margin-bottom: 0.75rem; font-size: 0.95rem;">💱 Cotizaciones Comerciales</h4>
+                    `;
+                    
+                    if (oficialData) {
+                        additionalInfo += `
+                            <div class="value-row">
+                                <span class="value-label">🏛️ Oficial - Compra:</span>
+                                <span class="value-amount">${formatNumber(oficialData.compra)}</span>
+                            </div>
+                            <div class="value-row">
+                                <span class="value-label">🏛️ Oficial - Venta:</span>
+                                <span class="value-amount">${formatNumber(oficialData.venta)}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    if (blueData) {
+                        additionalInfo += `
+                            <div class="value-row">
+                                <span class="value-label">💙 Blue - Compra:</span>
+                                <span class="value-amount">${formatNumber(blueData.compra)}</span>
+                            </div>
+                            <div class="value-row">
+                                <span class="value-label">💙 Blue - Venta:</span>
+                                <span class="value-amount">${formatNumber(blueData.venta)}</span>
+                            </div>
+                        `;
+                    }
+                    
+                    additionalInfo += `</div>`;
+                }
+            }
+            
+            card.innerHTML = `
+                <div class="currency-header">
+                    <span class="currency-code">${cotizacion.codigoMoneda}</span>
+                    <span class="currency-flag">${flag}</span>
+                </div>
+                <div class="currency-name">${cotizacion.descripcion}</div>
+                <div class="currency-values">
+                    <h4 style="color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.9rem;">🏦 BCRA - Cotizaciones Oficiales</h4>
+                    <div class="value-row">
+                        <span class="value-label">Cotización Oficial:</span>
+                        <span class="value-amount">${formatNumber(cotizacion.tipoCotizacion)}</span>
+                    </div>
+                    <div class="value-row">
+                        <span class="value-label">Tipo Pase:</span>
+                        <span class="value-amount">${formatNumber(cotizacion.tipoPase)}</span>
+                    </div>
+                    ${additionalInfo}
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Format numbers
+        function formatNumber(num) {
+            return new Intl.NumberFormat('es-AR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 8
+            }).format(num);
+        }
+
+        // Update timestamp
+        function updateTimestamp(fecha) {
+            const updateTimeDiv = document.getElementById('updateTime');
+            const timestampSpan = document.getElementById('updateTimestamp');
+            
+            const date = new Date(fecha + 'T12:00:00');
+            const formatted = date.toLocaleDateString('es-AR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            timestampSpan.textContent = formatted;
+            updateTimeDiv.style.display = 'block';
+        }
+
+        // UI State Management
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('currencyContainer').style.display = show ? 'none' : 'grid';
+        }
+
+        function showError() {
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('updateTime').style.display = 'none';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function showNoResults() {
+            document.getElementById('noResults').style.display = 'block';
+            document.getElementById('currencyContainer').style.display = 'none';
+            document.getElementById('updateTime').style.display = 'none';
+        }
+
+        function hideNoResults() {
+            document.getElementById('noResults').style.display = 'none';
+        }
+
+        // Add enter key support for date input
+        document.getElementById('fecha').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadCotizaciones();
+            }
+        });
+
+        // Add change event for currency filter
+        document.getElementById('moneda').addEventListener('change', async () => {
+            const currentData = document.getElementById('currencyContainer').children.length > 0;
+            if (currentData) {
+                await Promise.all([loadCotizaciones(), loadDolarData()]);
+            }
+        });
+
+        // Toggle chart section
+        function toggleChartSection() {
+            const chartContent = document.getElementById('chartContent');
+            const toggleText = document.getElementById('chartToggleText');
+            
+            if (chartContent.style.display === 'none') {
+                chartContent.style.display = 'block';
+                toggleText.textContent = 'Ocultar Gráfico';
+                initializeCurrencySelector();
+            } else {
+                chartContent.style.display = 'none';
+                toggleText.textContent = 'Ver Gráfico Histórico';
+            }
+        }
+
+        // Initialize currency selector for chart
+        function initializeCurrencySelector() {
+            const selector = document.getElementById('currencySelector');
+            const existingChips = selector.querySelectorAll('.currency-chip');
+            
+            if (existingChips.length > 0) return; // Already initialized
+            
+            // Add currency chips
+            allCurrencies.forEach(currency => {
+                const chip = document.createElement('div');
+                chip.className = 'currency-chip';
+                chip.textContent = `${currencyFlags[currency.codigo] || currencyFlags.default} ${currency.codigo}`;
+                chip.dataset.currency = currency.codigo;
+                
+                chip.addEventListener('click', () => {
+                    toggleCurrencySelection(chip);
+                });
+                
+                selector.appendChild(chip);
+            });
+
+            // Select USD and EUR by default
+            const usdChip = selector.querySelector('[data-currency="USD"]');
+            const eurChip = selector.querySelector('[data-currency="EUR"]');
+            if (usdChip) toggleCurrencySelection(usdChip);
+            if (eurChip) toggleCurrencySelection(eurChip);
+        }
+
+        // Toggle currency selection
+        function toggleCurrencySelection(chip) {
+            const currency = chip.dataset.currency;
+            
+            if (chip.classList.contains('selected')) {
+                chip.classList.remove('selected');
+                selectedCurrencies = selectedCurrencies.filter(c => c !== currency);
+            } else {
+                if (selectedCurrencies.length >= 5) {
+                    alert('Máximo 5 divisas permitidas');
+                    return;
+                }
+                chip.classList.add('selected');
+                selectedCurrencies.push(currency);
+            }
+        }
+
+        // Update chart with historical data
+        async function updateChart() {
+            if (selectedCurrencies.length === 0) {
+                alert('Por favor selecciona al menos una divisa');
+                return;
+            }
+
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            
+            if (!dateFrom || !dateTo) {
+                alert('Por favor selecciona ambas fechas');
+                return;
+            }
+
+            // Validar que las fechas no sean muy antiguas
+            const fromDate = new Date(dateFrom);
+            const minDate = new Date('2013-02-01');
+            if (fromDate < minDate) {
+                alert('La fecha mínima disponible es 01/02/2013 (límite histórico de la API del BCRA)');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const datasets = [];
+                console.log('Cargando datos para divisas:', selectedCurrencies);
+                
+                for (const currency of selectedCurrencies) {
+                    console.log(`Cargando datos históricos para ${currency}...`);
+                    
+                    try {
+                        const data = await loadHistoricalData(currency, dateFrom, dateTo);
+                        console.log(`Datos obtenidos para ${currency}:`, data.length, 'puntos');
+                        
+                        if (data.length > 0) {
+                            datasets.push({
+                                label: `${currencyFlags[currency] || '💱'} ${currency}`,
+                                data: data.map(item => ({
+                                    x: item.fecha,
+                                    y: item.tipoCotizacion
+                                })),
+                                borderColor: currencyColors[currency] || currencyColors.default,
+                                backgroundColor: 'transparent',
+                                borderWidth: 2,
+                                pointRadius: 1,
+                                pointHoverRadius: 6,
+                                tension: 0.1,
+                                fill: false
+                            });
+                        } else {
+                            console.warn(`No se encontraron datos para ${currency}`);
+                        }
+                    } catch (error) {
+                        console.error(`Error cargando ${currency}:`, error);
+                        // Continuar con las otras divisas aunque una falle
+                    }
+                }
+
+                if (datasets.length > 0) {
+                    renderChart(datasets);
+                } else {
+                    alert('No se encontraron datos para las divisas seleccionadas en el período especificado');
+                }
+                
+            } catch (error) {
+                console.error('Error updating chart:', error);
+                alert('Error al cargar datos históricos: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Refresh all data function
+        async function refreshAllData() {
+            showLoading(true);
+            try {
+                await Promise.all([loadCotizaciones(), loadDolarData()]);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Load historical data for a currency using the correct BCRA API endpoint
+        async function loadHistoricalData(currency, dateFrom, dateTo) {
+            console.log(`Cargando datos históricos para ${currency} desde ${dateFrom} hasta ${dateTo}`);
+            
+            try {
+                // Use the official "Evolución de moneda" endpoint
+                const url = `${API_BASE_URL}/Cotizaciones/${currency}?fechadesde=${dateFrom}&fechahasta=${dateTo}&limit=1000`;
+                console.log('URL API:', url);
+                
+                const response = await fetch(proxied(url), {
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const json = await response.json();
+                console.log(`Respuesta API para ${currency}:`, json);
+                
+                const data = [];
+                
+                if (json.status === 200 && json.results && Array.isArray(json.results)) {
+                    json.results.forEach(item => {
+                        if (item.fecha && item.detalle && Array.isArray(item.detalle)) {
+                            const currencyDetail = item.detalle.find(det => det.codigoMoneda === currency);
+                            if (currencyDetail && currencyDetail.tipoCotizacion !== undefined) {
+                                data.push({
+                                    fecha: item.fecha,
+                                    tipoCotizacion: parseFloat(currencyDetail.tipoCotizacion) || 0
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                console.log(`Datos procesados para ${currency}:`, data.length, 'puntos');
+                return data.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+                
+            } catch (error) {
+                console.error(`Error cargando datos históricos para ${currency}:`, error);
+                throw error;
+            }
+        }
+
+        // Render chart
+        function renderChart(datasets) {
+            const ctx = document.getElementById('historicalChart').getContext('2d');
+            
+            if (historicalChart) {
+                historicalChart.destroy();
+            }
+
+            historicalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Evolución Histórica de Cotizaciones',
+                            color: '#ecf0f1',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#ecf0f1',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(44, 62, 80, 0.9)',
+                            titleColor: '#ecf0f1',
+                            bodyColor: '#ecf0f1',
+                            borderColor: '#34495e',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(4);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'yyyy-MM-dd',
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'dd/MM/yy'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#95a5a6'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#95a5a6',
+                                callback: function(value) {
+                                    return value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
